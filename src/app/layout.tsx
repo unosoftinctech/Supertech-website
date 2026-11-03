@@ -13,6 +13,7 @@ const bigShoulders = Big_Shoulders({
   weight: ["800", "900"],
   variable: "--font-big-shoulders",
   display: "swap",
+  fallback: ["Arial", "Helvetica", "sans-serif"],
 });
 
 const manrope = Manrope({
@@ -25,9 +26,11 @@ const manrope = Manrope({
 const siteName = company.name;
 const siteDescription =
   "SuperTech Engineering Corporation, Yamuna Nagar, Haryana: 50+ years manufacturing precision components, hydraulic press components, heavy pressure components and custom engineering parts.";
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL?.trim() || `https://${company.website}`;
 
 export const metadata: Metadata = {
-  metadataBase: new URL(`https://${company.website}`),
+  metadataBase: new URL(siteUrl),
   applicationName: siteName,
   title: {
     default: `Precision Engineering Components Manufacturer | ${siteName}`,

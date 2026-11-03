@@ -15,7 +15,7 @@ type Props = {
 export default function InfoCard({ title, text, tag, icon, left = false }: Props) {
   return (
     <div
-      className={`rounded-lg border border-line bg-white px-[22px] py-[30px] ${left ? "text-left" : "text-center"}`}
+      className={`h-full rounded-lg border border-line bg-white px-[22px] py-[30px] ${left ? "text-left" : "text-center"}`}
     >
       {icon}
       {tag ? (

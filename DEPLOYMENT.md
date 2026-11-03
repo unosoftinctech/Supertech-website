@@ -1,90 +1,190 @@
-# Hostinger Deployment
+# Hostinger VPS Deployment
 
-The site is exported as static HTML, CSS, JS, and assets. Hostinger only needs to
-serve the contents of `out/` from the domain's document root (`public_html`).
-No Node.js runtime, database, or server process is required.
+The website is a Next.js Node.js app. Nginx terminates TLS and proxies requests
+to the app on `127.0.0.1:3000`; PM2 keeps the process alive. The contact form is
+served by `POST /api/contact/` and sends email through SMTP.
 
-## 1. Build locally (optional check)
-
-```bash
-npm ci
-npm run typecheck
-npm run build
-npm run preview
+```
+Visitor → Nginx (443) → Next.js on 127.0.0.1:3000 → SMTP → business inbox
 ```
 
-Confirm that `out/index.html`, `out/404.html`, `out/.htaccess`, `out/robots.txt`,
-and `out/sitemap.xml` exist before deploying.
+## 1. Server prerequisites
 
-## 2. Prepare Hostinger
+Use Ubuntu 22.04/24.04 on a Hostinger VPS. As a sudo user:
 
-1. Log in to hPanel and open **Websites -> Manage -> File Manager**.
-2. Confirm the domain's document root is `public_html` (or note the correct folder
-   for an addon domain, for example `domains/example.com/public_html`).
-3. Open **Files -> FTP Accounts** and create a dedicated FTP user for deployment.
-   Note the FTP host, username, password, and port (usually 21).
-4. Open **Security -> SSL** and make sure the free SSL certificate is active.
-5. Point the domain's DNS records to Hostinger if they are not already.
+```bash
+# Node.js 22
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs nginx rsync curl certbot python3-certbot-nginx
 
-## 3. Add GitHub secrets
+# PM2
+sudo npm install -g pm2
+```
 
-In the GitHub repository, go to **Settings -> Secrets and variables -> Actions**
-and add the following repository secrets:
+Use at least 2 GB RAM (or add swap) because Next.js builds are memory-hungry.
 
-| Secret           | Required | Example                    | Notes                                      |
-| ---------------- | -------- | -------------------------- | ------------------------------------------ |
-| `FTP_SERVER`     | Yes      | `ftp.supertechengg.in`     | FTP host from hPanel                       |
-| `FTP_USERNAME`   | Yes      | `deploy@supertechengg.in`  | FTP account username                       |
-| `FTP_PASSWORD`   | Yes      | —                          | FTP account password                       |
-| `FTP_SERVER_DIR` | No       | `/public_html/`            | Must end with `/`                          |
-| `FTP_PORT`       | No       | `21`                       | Defaults to 21                             |
-| `FTP_PROTOCOL`   | No       | `ftps`                     | Use `ftp` if FTPS is unavailable            |
+Create a deploy user and application directory:
 
-Use an environment named `production` under **Settings -> Environments** if you
-want manual approval before each deployment.
+```bash
+sudo adduser deploy
+sudo mkdir -p /var/www/supertech
+sudo chown -R deploy:deploy /var/www/supertech
+```
 
-## 4. Deploy
+## 2. SSH access for GitHub Actions
 
-- Push to `main`, or run **Actions -> Deploy to Hostinger -> Run workflow**.
-- The workflow runs a typecheck and static build, verifies the export, and mirrors
-  `out/` to the configured Hostinger directory.
-- `.well-known`, `.git`, and `cgi-bin` are excluded so SSL validation files are
-  never removed.
+Generate a dedicated key on your workstation:
 
-## 5. Verify after the first deployment
+```bash
+ssh-keygen -t ed25519 -C "github-actions-supertech" -f supertech_deploy -N ""
+ssh-copy-id -i supertech_deploy.pub deploy@YOUR_VPS_IP
+```
 
-- `https://www.supertechengg.in/` loads over HTTPS.
-- `https://www.supertechengg.in/about/` loads directly (not only through the home page).
-- A non-existent URL shows the styled 404 page.
-- `https://www.supertechengg.in/robots.txt` and `/sitemap.xml` are reachable.
-- The canonical host redirect works (bare domain -> `www`).
+Use an empty passphrase for this dedicated automation key, keep `supertech_deploy`
+private, and add its contents to GitHub as `VPS_SSH_KEY`.
+You can also verify the server fingerprint and store it as `VPS_KNOWN_HOSTS`:
 
-## Manual deployment
+```bash
+ssh-keyscan -p 22 -H YOUR_VPS_IP
+```
 
-If GitHub Actions is unavailable, build locally and upload the contents of `out/`
-with File Manager or FileZilla. Upload the files **inside** `out/`, not the folder
-itself, so `index.html` sits directly in `public_html`.
+## 3. GitHub secrets
 
-`out/.htaccess` must be uploaded as well. Enable "show hidden files" in FileZilla
-or the Hostinger File Manager if it is not visible.
+In **Settings → Secrets and variables → Actions**, add:
 
-## Rollback
+| Secret            | Required | Example                | Notes                                  |
+| ----------------- | -------- | ---------------------- | -------------------------------------- |
+| `VPS_HOST`        | Yes      | `203.0.113.10`         | VPS IP or hostname                     |
+| `VPS_USER`        | Yes      | `deploy`               | SSH user                               |
+| `VPS_SSH_KEY`     | Yes      | —                      | Private key from step 2                |
+| `VPS_PORT`        | No       | `22`                   | Defaults to 22                         |
+| `VPS_APP_DIR`     | No       | `/var/www/supertech`   | Defaults to `/var/www/supertech`       |
+| `VPS_KNOWN_HOSTS` | No       | output of `ssh-keyscan`| Avoids trust-on-first-use              |
 
-The workflow mirrors the current build, so a rollback is another deployment:
+Create an environment named `production` under **Settings → Environments** if
+you want manual approval before each deployment.
 
-1. Revert the bad commit on `main`.
-2. Push the revert, or run the deploy workflow from the last good commit.
-3. Alternatively, restore the previous `out/` artifact from the CI workflow run
-   (**Actions -> CI -> Artifacts -> static-site**) and upload it manually.
+## 4. Server environment file
 
-## Deploying to a Hostinger VPS instead
+Create `/var/www/supertech/.env` on the server. It is excluded from rsync, so
+deployments never overwrite it:
 
-For a VPS with Nginx, use the same `out/` directory:
+```bash
+sudo -u deploy nano /var/www/supertech/.env
+```
 
-1. Build in CI or locally with `npm run build`.
-2. Copy `out/` to `/var/www/supertech/` (for example with `rsync` over SSH).
-3. Point the Nginx `root` at `/var/www/supertech` and add `try_files $uri $uri/ =404;`.
-4. Use Certbot for TLS, or terminate TLS at a reverse proxy.
+```dotenv
+NEXT_PUBLIC_SITE_URL=https://www.supertechengg.in
 
-A Node.js process is not needed. If an SSH-based workflow is preferred, replace
-the FTP step with an `rsync` action and store the SSH key in GitHub secrets.
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=supertech074@gmail.com
+SMTP_PASS=your-16-character-google-app-password
+MAIL_FROM="SuperTech Website <supertech074@gmail.com>"
+MAIL_TO=supertech074@gmail.com
+```
+
+```bash
+sudo chmod 600 /var/www/supertech/.env
+```
+
+See the README for Gmail App Password steps. Never commit this file.
+
+## 5. First deployment
+
+Push to `main`, or run **Actions → Deploy to Hostinger VPS → Run workflow**.
+The workflow:
+
+1. installs dependencies, lints, and typechecks;
+2. creates the app directory on the server;
+3. rsyncs the source, excluding `.env`, `node_modules`, `.next`, and `out`;
+4. runs `deploy/remote-deploy.sh`, which backs up the last `.next`, runs
+   `npm ci --include=dev`, `npm run build`, and `npm prune --omit=dev`;
+5. reloads PM2 with `ecosystem.config.cjs` and saves the process list;
+6. checks `http://127.0.0.1:3000/api/health/`.
+
+If the build fails, the script restores the previous `.next` and exits before
+reloading PM2. Check the failed workflow log and the server build output.
+
+## 6. Nginx and SSL
+
+Copy the example configuration:
+
+```bash
+sudo cp /var/www/supertech/deploy/nginx.conf.example /etc/nginx/sites-available/supertech
+sudo nano /etc/nginx/sites-available/supertech   # set the real domain
+sudo ln -s /etc/nginx/sites-available/supertech /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Before obtaining the certificate, point both DNS records at the VPS:
+
+- `A` record for `supertechengg.in` → VPS IPv4 address
+- `A` record for `www.supertechengg.in` → VPS IPv4 address
+
+Wait for DNS to propagate, then run:
+
+```bash
+sudo certbot --nginx -d supertechengg.in -d www.supertechengg.in
+```
+
+Certbot adds the TLS block and HTTP-to-HTTPS redirect. If you prefer the bare
+domain to redirect to `www`, add a separate redirect server block after Certbot
+has issued the certificate.
+
+Open the firewall:
+
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
+```
+
+## 7. PM2 on boot
+
+```bash
+sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u deploy --hp /home/deploy
+sudo -u deploy pm2 save
+```
+
+## 8. Verify
+
+```bash
+curl https://www.supertechengg.in/api/health/
+```
+
+Then submit a test enquiry and confirm the email arrives at `MAIL_TO` (check
+spam on the first run). The success message should appear under the form.
+
+Useful commands:
+
+```bash
+sudo -u deploy pm2 status
+sudo -u deploy pm2 logs supertech-website
+sudo journalctl -u nginx -f
+```
+
+## 9. Updating and rollback
+
+- **Normal update:** push to `main`; the workflow rebuilds and reloads PM2.
+- **SMTP environment change:** edit `/var/www/supertech/.env`, then
+  `sudo -u deploy pm2 restart supertech-website --update-env`.
+- **Site URL change:** `NEXT_PUBLIC_SITE_URL` is baked in at build time. Change
+  `.env` and redeploy (or run `npm run build` on the server) so metadata uses it.
+- **Rollback:** revert the bad commit and push, or re-run the workflow from the
+  last good commit in the Actions tab.
+
+The deploy uses `rsync --delete` but excludes `.env` and `node_modules`, so the
+server environment file and installed dependencies are preserved.
+
+## Troubleshooting
+
+| Symptom                              | Check                                                                 |
+| ------------------------------------ | --------------------------------------------------------------------- |
+| `502 Bad Gateway`                    | `pm2 status`, `pm2 logs supertech-website`, app binding to `127.0.0.1:3000` |
+| Contact form says temporarily unavailable | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` in `.env`; restart PM2 |
+| Email not received                   | SMTP credentials, spam folder, `MAIL_TO`, outbound port 465/587       |
+| `npm: command not found` over SSH    | Node installed for the wrong user; ensure `bash -lc` loads Node 22     |
+| Rate limit hit during testing        | Wait 15 minutes or restart PM2 (the limiter is in-memory)             |

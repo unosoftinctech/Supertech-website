@@ -1,4 +1,4 @@
-name: Deploy to Hostinger
+name: Deploy to Hostinger VPS
 
 on:
   push:
@@ -17,15 +17,16 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build and upload to Hostinger
+    name: Deploy over SSH
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: production
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -33,32 +34,55 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build static export
-        run: npm run build
+      - name: Lint
+        run: npm run lint
 
-      - name: Verify export output
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
-          test -f out/index.html
-          test -f out/404.html
-          test -f out/.htaccess
-          test -f out/robots.txt
-          test -f out/sitemap.xml
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
 
-      - name: Upload to Hostinger
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          # Use "ftps" when your Hostinger FTP account supports TLS.
-          # Set the FTP_PROTOCOL secret to "ftp" if the connection fails.
-          protocol: ${{ secrets.FTP_PROTOCOL || 'ftps' }}
-          port: ${{ secrets.FTP_PORT || 21 }}
-          local-dir: ./out/
-          server-dir: ${{ secrets.FTP_SERVER_DIR || '/public_html/' }}
-          log-level: standard
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/.well-known/**
-            **/cgi-bin/**
+          if [ -n "${VPS_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$VPS_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" >> ~/.ssh/known_hosts
+          fi
+
+      - name: Sync, build, and restart
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR || '/var/www/supertech' }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+            "mkdir -p '$VPS_APP_DIR'"
+
+          rsync -az --delete \
+            --exclude '.git/' \
+            --exclude 'node_modules/' \
+            --exclude '.next/' \
+            --exclude '.next.previous/' \
+            --exclude 'out/' \
+            --exclude '.env' \
+            --exclude '.env.*' \
+            -e "ssh -i $HOME/.ssh/deploy_key -p $VPS_PORT" \
+            ./ "$VPS_USER@$VPS_HOST:$VPS_APP_DIR/"
+
+          ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+            "bash -lc 'cd \"$VPS_APP_DIR\" && bash deploy/remote-deploy.sh \"$VPS_APP_DIR\"'"
+
+          ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+            "curl -fsS --retry 5 --retry-delay 3 http://127.0.0.1:3000/api/health/"

@@ -10,7 +10,7 @@ export default function WhyChooseUs() {
     <Section alt>
       <Container>
         <SectionHeading label="Why Choose Us" title="Why Choose SuperTech" />
-        <CardGrid>
+        <CardGrid cols={3}>
           {whyChooseUs.map((item) => (
             <InfoCard key={item.title} title={item.title} text={item.text} left />
           ))}

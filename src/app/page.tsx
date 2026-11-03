@@ -11,6 +11,7 @@ import IntroBand from "@/components/home/IntroBand";
 import JubileeBadge from "@/components/home/JubileeBadge";
 import ProductsPreview from "@/components/home/ProductsPreview";
 import Services from "@/components/home/Services";
+import Testimonials from "@/components/home/Testimonials";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -29,6 +30,7 @@ export default function HomePage() {
       <Services />
       <Industries />
       <Clients />
+      <Testimonials />
       <CtaBanner />
     </>
   );

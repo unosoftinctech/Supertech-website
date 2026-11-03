@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "build": "next build --webpack",
     "typecheck": "next typegen && tsc --noEmit",
-    "preview": "npx --yes serve@14 out",
+    "lint": "eslint . --max-warnings=0",
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true});require('fs').rmSync('out',{recursive:true,force:true})\""
   },
   "engines": {
@@ -14,14 +16,18 @@
   },
   "dependencies": {
     "next": "16.4.4",
+    "nodemailer": "^10.3.1",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.4",
     "@types/node": "^22",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.4",
     "tailwindcss": "4.3.4",
     "typescript": "^5"
   }

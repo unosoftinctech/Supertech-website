@@ -24,6 +24,16 @@
       transform: translateX(-50%);
     }
   }
+
+  --animate-marquee-reverse: marquee-reverse 45s linear infinite;
+  @keyframes marquee-reverse {
+    from {
+      transform: translateX(-50%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
 }
 
 /* Dark blue diagonal gradient used by the band, CTA and page banners */

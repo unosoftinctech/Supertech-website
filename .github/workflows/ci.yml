@@ -19,14 +19,15 @@ concurrency:
 
 jobs:
   build:
-    name: Typecheck and build
+    name: Typecheck, build, smoke test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -34,25 +35,66 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Build static export
+      - name: Build
         run: npm run build
 
-      - name: Verify export output
+      - name: Verify server build
         run: |
-          test -f out/index.html
-          test -f out/404.html
-          test -f out/.htaccess
-          test -f out/robots.txt
-          test -f out/sitemap.xml
+          test -f .next/BUILD_ID
+          test -d .next/server/app/api/contact
+          test -d .next/server/app/api/health
+          test -f public/robots.txt
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: static-site
-          path: out
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 7
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          npm run start > /tmp/next-start.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          ready=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/health/ > /dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$ready" -ne 1 ]; then
+            cat /tmp/next-start.log
+            exit 1
+          fi
+
+          curl -fsS http://127.0.0.1:3000/ > /dev/null
+          curl -fsS http://127.0.0.1:3000/contact/ > /dev/null
+
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"x"}' \
+            http://127.0.0.1:3000/api/contact/)
+          test "$status" = "400"
+
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"Bot","phone":"1234567890","message":"Spam message here","company":"Bot Co","startedAt":0}' \
+            http://127.0.0.1:3000/api/contact/)
+          test "$status" = "200"
+
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            -H 'Origin: https://evil.example' \
+            -d '{"name":"Test User","phone":"+91 90500 00074","message":"Testing the origin check.","startedAt":0}' \
+            http://127.0.0.1:3000/api/contact/)
+          test "$status" = "403"
+
+          echo "Smoke test passed."

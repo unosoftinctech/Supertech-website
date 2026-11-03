@@ -14,6 +14,7 @@ const bigShoulders = Big_Shoulders({
   variable: "--font-big-shoulders",
   display: "swap",
   fallback: ["Arial", "Helvetica", "sans-serif"],
+  adjustFontFallback: false,
 });
 
 const manrope = Manrope({

@@ -87,11 +87,11 @@ export default async function BlogPostPage({ params }: Props) {
         <Container>
           <div className="mx-auto max-w-4xl">
             {/* Featured Image */}
-            <div className="relative mb-10 h-72 w-full overflow-hidden rounded-2xl border border-line bg-surface shadow-md tablet:h-56">
+            <div className="relative mb-10 w-full overflow-hidden rounded-2xl border border-line bg-surface shadow-md">
               <Image
                 src={post.image}
                 alt={post.title}
-                className="h-full w-full object-cover"
+                className="h-auto w-full object-contain"
                 priority
               />
             </div>

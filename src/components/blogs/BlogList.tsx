@@ -16,7 +16,7 @@ export default function BlogList() {
               className="group flex flex-col overflow-hidden rounded-xl border border-line bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand hover:shadow-lg"
             >
               {/* Image thumbnail */}
-              <div className="relative h-52 w-full overflow-hidden bg-surface">
+              <div className="relative aspect-[16/9] w-full overflow-hidden bg-surface">
                 <Image
                   src={post.image}
                   alt={post.title}

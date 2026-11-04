@@ -10,6 +10,13 @@ import hydraulicAssemblies from "@/assets/images/products/hydraulic-assemblies.j
 import customPrecisionComponents from "@/assets/images/products/custom-precision-components.jpg";
 import thermowell from "@/assets/images/products/thermowell.jpg";
 
+import boilerManufacturing from "@/assets/images/blogs/boiler-manufacturing.jpg";
+import hydroTestTesting from "@/assets/images/blogs/hydro-test-testing.jpg";
+import boilerThermowells from "@/assets/images/blogs/boiler-thermowells.jpg";
+import precisionMachiningPowerPlants from "@/assets/images/blogs/precision-machining-power-plants.jpg";
+import materialQualityControl from "@/assets/images/blogs/material-quality-control.jpg";
+import customPrecisionEngineering from "@/assets/images/blogs/custom-precision-engineering.jpg";
+
 import isgec from "@/assets/images/clients/isgec.jpg";
 import lloyds from "@/assets/images/clients/lloyds.jpg";
 import thyssenkrupp from "@/assets/images/clients/thyssenkrupp.jpg";
@@ -309,7 +316,7 @@ export const blogPosts: BlogPost[] = [
     text: "Boiler manufacturing demands exceptional precision, reliability and quality at every stage. From pressure testing to temperature measurement, every component plays an important role in ensuring safe and efficient boiler operation.",
     readTime: "4 min read",
     date: "November 2026",
-    image: industrialValves,
+    image: boilerManufacturing,
     primaryKeywords: [
       "Boiler testing components manufacturer",
       "Precision engineering manufacturer",
@@ -345,7 +352,7 @@ export const blogPosts: BlogPost[] = [
     text: "Hydrostatic testing is an important procedure in boiler manufacturing and pressure equipment inspection to verify equipment pressure integrity under controlled test conditions.",
     readTime: "4 min read",
     date: "November 2026",
-    image: hydroTestStoppers,
+    image: hydroTestTesting,
     primaryKeywords: [
       "Boiler testing components manufacturer",
       "Industrial testing components",
@@ -381,7 +388,7 @@ export const blogPosts: BlogPost[] = [
     text: "Temperature monitoring is critical in boiler systems, particularly in high-pressure steam applications. Thermowells provide reliable sensor protection and measurement precision.",
     readTime: "4 min read",
     date: "November 2026",
-    image: thermowell,
+    image: boilerThermowells,
     primaryKeywords: [
       "Boiler accessories manufacturer",
       "Boiler components manufacturer",
@@ -417,7 +424,7 @@ export const blogPosts: BlogPost[] = [
     text: "The power generation and boiler industries require components manufactured with high levels of accuracy and consistency, where even minor variations can affect equipment assembly and performance.",
     readTime: "4 min read",
     date: "November 2026",
-    image: hydraulicPressComponents,
+    image: precisionMachiningPowerPlants,
     primaryKeywords: [
       "Precision machining company",
       "Precision engineering manufacturer",
@@ -454,7 +461,7 @@ export const blogPosts: BlogPost[] = [
     text: "Selecting suitable materials and maintaining strict quality inspection are paramount when manufacturing industrial components destined for high-pressure and high-temperature environments.",
     readTime: "4 min read",
     date: "November 2026",
-    image: customPrecisionComponents,
+    image: materialQualityControl,
     primaryKeywords: [
       "Custom engineering components",
       "Precision engineering manufacturer",
@@ -488,7 +495,7 @@ export const blogPosts: BlogPost[] = [
     text: "Standard parts do not always fit specialized equipment. Custom precision engineering delivers components manufactured strictly to customer drawings, samples and application needs.",
     readTime: "4 min read",
     date: "November 2026",
-    image: tubeBendingDies,
+    image: customPrecisionEngineering,
     primaryKeywords: [
       "Custom engineering components",
       "Precision engineering manufacturer",
